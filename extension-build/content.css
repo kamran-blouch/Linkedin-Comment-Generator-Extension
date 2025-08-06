@@ -1,0 +1,58 @@
+/* Content script styles for LinkedIn AI Comment Generator */
+
+.ai-comment-generator-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-comment-generator-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+}
+
+.ai-comment-generator-btn:hover::before {
+    left: 100%;
+}
+
+/* Ensure our buttons don't interfere with LinkedIn's layout */
+.ai-comment-generator-btn {
+    margin: 4px !important;
+    box-sizing: border-box !important;
+}
+
+/* Style for notification animations */
+@keyframes aiSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes aiSlideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.ai-notification {
+    animation: aiSlideIn 0.3s ease-out;
+}
+
+.ai-notification.removing {
+    animation: aiSlideOut 0.3s ease-in;
+}

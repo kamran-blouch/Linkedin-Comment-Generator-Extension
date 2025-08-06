@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn AI Comment Generator",
+  "version": "1.0.0",
+  "description": "Generate AI-powered LinkedIn comments with multiple AI models and tones",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "host_permissions": [
+    "*://*.linkedin.com/*"
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "LinkedIn AI Comment Generator",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://*.linkedin.com/*"],
+      "js": ["content.js"],
+      "css": ["content.css"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["popup.html", "popup.js","injected-popup.html", "assets/*"],
+      "matches": ["*://*.linkedin.com/*"]
+    }
+  ]
+}

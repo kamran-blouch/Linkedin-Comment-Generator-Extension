@@ -1,0 +1,13 @@
+{
+  "name": "linkedin-ai-comment-generator-extension",
+  "version": "1.0.0",
+  "description": "Chrome extension build configuration for LinkedIn AI Comment Generator",
+  "scripts": {
+    "build:extension": "node build-extension.js",
+    "build:web": "vite build",
+    "build:all": "npm run build:web && npm run build:extension"
+  },
+  "keywords": ["chrome-extension", "linkedin", "ai", "comments"],
+  "author": "Muhammad Kamran Blouch",
+  "license": "MIT"
+}
