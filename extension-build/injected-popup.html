@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LinkedIn AI Comment Generator</title>
     <style>
         body {
@@ -215,6 +215,14 @@
                         <option value="supportive">💪 Supportive</option>
                     </select>
                 </div>
+
+                <div class="form-group">
+                    <label for="provider-select">Model Provider</label>
+                    <select id="provider-select">
+                        <option value="openai">OpenAI</option>
+                        <option value="groq">Groq (free)</option>
+                    </select>
+                </div>
                 
                 <div class="form-group">
                     <label for="model-select">AI Model</label>
@@ -231,11 +239,7 @@
                     <label for="hint-input">Hint (Optional)</label>
                     <input type="text" id="hint-input" placeholder="Add specific guidance for the comment...">
                 </div>
-                <!--
-                <button id="get-content-btn" class="generate-btn" style="background: #10b981;">
-                    📄 Get Content from Page
-                </button>
-                -->
+                
                 <button id="generate-btn" class="generate-btn">
                     <span id="generate-text">✨ Generate Comment</span>
                     <div id="generate-spinner" class="spinner" style="display: none;"></div>
@@ -251,7 +255,6 @@
                     </div>
                     <div class="comment-actions">
                         <button id="copy-btn" class="copy-btn">📋 Copy</button>
-                        <!--<button id="insert-btn" class="insert-btn">📝 Insert to LinkedIn</button> -->
                     </div>
                 </div>
             </div>

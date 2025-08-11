@@ -1,14 +1,35 @@
 class LinkedInAIExtension {
-   
     constructor() {
-            window.addEventListener('message', (event) => {
-                if (event.data && event.data.type === 'SET_POST_CONTENT') {
-                    document.getElementById('post-content').value = event.data.postContent;
-                }
-            });
-            this.initializeEventListeners();
-            this.loadSavedData();
-        }
+        // Models by provider
+        this.modelsByProvider = {
+            openai: [
+                { value: "gpt-4.1-2025-04-14", label: "GPT-4.1 (Flagship)" },
+                { value: "gpt-4o", label: "GPT-4o (High Quality)" },
+                { value: "gpt-4o-mini", label: "GPT-4o Mini (Fast)" },
+                { value: "o3-2025-04-16", label: "O3 (Reasoning)" },
+                { value: "o4-mini-2025-04-16", label: "O4 Mini (Fast Reasoning)" }
+            ],
+            groq: [
+                { value: "qwen/qwen3-32b", label: "qwen/qwen3-32b" },
+                { value: "deepseek-r1-distill-llama-70b", label: "deepseek-r1-distill-llama-70b" },
+                { value: "gemma2-9b-it", label: "gemma2-9b-it" },
+                { value: "llama-3.1-8b-instant", label: "llama-3.1-8b-instant" },
+                { value: "llama-3.3-70b-versatile", label: "llama-3.3-70b-versatile" },
+                { value: "openai/gpt-oss-120b", label: "openai/gpt-oss-120b" },
+                { value: "openai/gpt-oss-20b", label: "openai/gpt-oss-20b" },
+                { value: "meta-llama/llama-4-scout-17b-16e-instruct", label: "meta-llama/llama-4-scout-17b-16e-instruct" },
+                { value: "moonshotai/kimi-k2-instruct", label: "moonshotai/kimi-k2-instruct" }
+            ]
+        };
+
+        window.addEventListener('message', (event) => {
+            if (event.data && event.data.type === 'SET_POST_CONTENT') {
+                document.getElementById('post-content').value = event.data.postContent;
+            }
+        });
+        this.initializeEventListeners();
+        this.loadSavedData();
+    }
 
     initializeEventListeners() {
         /*
@@ -16,16 +37,39 @@ class LinkedInAIExtension {
         */
         document.getElementById('generate-btn').addEventListener('click', () => this.generateComment());
         document.getElementById('copy-btn').addEventListener('click', () => this.copyComment());
-        //document.getElementById('insert-btn').addEventListener('click', () => this.insertComment());
-        
+
         // Save preferences on change
         document.getElementById('tone-select').addEventListener('change', () => this.savePreferences());
         document.getElementById('model-select').addEventListener('change', () => this.savePreferences());
+
+        // New: provider select change updates models and saves
+        document.getElementById('provider-select').addEventListener('change', () => {
+            this.savePreferences();
+            this.updateModelOptions();
+        });
     }
-    
+
+    updateModelOptions() {
+        const provider = document.getElementById('provider-select').value;
+        const modelSelect = document.getElementById('model-select');
+
+        // Clear current options
+        modelSelect.innerHTML = '';
+
+        // Add models of the selected provider
+        this.modelsByProvider[provider].forEach(model => {
+            const option = document.createElement('option');
+            option.value = model.value;
+            option.textContent = model.label;
+            modelSelect.appendChild(option);
+        });
+
+        // Select first model by default
+        modelSelect.value = this.modelsByProvider[provider][0].value;
+    }
+
     async loadSavedData() {
         try {
-            // Try up to 10 times (1 second total) to get currentPostContent
             let result = {};
             for (let i = 0; i < 10; i++) {
                 result = await chrome.storage.local.get(['preferences', 'lastComment', 'currentPostContent']);
@@ -35,7 +79,17 @@ class LinkedInAIExtension {
 
             if (result.preferences) {
                 document.getElementById('tone-select').value = result.preferences.tone || 'professional';
-                document.getElementById('model-select').value = result.preferences.model || 'gpt-4.1-2025-04-14';
+                document.getElementById('provider-select').value = result.preferences.provider || 'openai';
+
+                // Update models dropdown based on provider
+                this.updateModelOptions();
+
+                // Set saved model if it exists in that provider's list
+                const provider = document.getElementById('provider-select').value;
+                const savedModel = result.preferences.model;
+                if (savedModel && this.modelsByProvider[provider].some(m => m.value === savedModel)) {
+                    document.getElementById('model-select').value = savedModel;
+                }
             }
 
             // Auto-fill post content if available
@@ -51,10 +105,12 @@ class LinkedInAIExtension {
             console.error('Error loading saved data:', error);
         }
     }
+
     async savePreferences() {
         try {
             const preferences = {
                 tone: document.getElementById('tone-select').value,
+                provider: document.getElementById('provider-select').value,
                 model: document.getElementById('model-select').value
             };
             await chrome.storage.local.set({ preferences });
@@ -62,10 +118,11 @@ class LinkedInAIExtension {
             console.error('Error saving preferences:', error);
         }
     }
-    
+
     async generateComment() {
         const postContent = document.getElementById('post-content').value.trim();
         const tone = document.getElementById('tone-select').value;
+        const provider = document.getElementById('provider-select').value;
         const model = document.getElementById('model-select').value;
         const hint = document.getElementById('hint-input').value.trim();
 
@@ -78,12 +135,13 @@ class LinkedInAIExtension {
         this.showStatus('Generating AI comment...', 'info');
 
         try {
-            // Send message to background script to handle API call
+            // Send message to background script with provider info
             const response = await chrome.runtime.sendMessage({
                 action: 'generateComment',
                 data: {
                     postCaption: postContent,
                     tone: tone,
+                    provider: provider,
                     model: model,
                     hint: hint || undefined
                 }
@@ -121,98 +179,30 @@ class LinkedInAIExtension {
     async copyComment() {
         try {
             const commentText = document.getElementById('comment-text').value;
-            await navigator.clipboard.writeText(commentText);
-            this.showStatus('Comment copied to clipboard!', 'success');
+            this.fallbackCopy(commentText);
         } catch (error) {
             console.error('Error copying comment:', error);
             this.showStatus('Error copying comment', 'error');
         }
     }
 
-    /*
-    async insertComment() {
+    fallbackCopy(text) {
         try {
-            const commentText = document.getElementById('comment-text').value;
-            const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-
-            if (!tab.url.includes('linkedin.com')) {
-                this.showStatus('Please navigate to LinkedIn first', 'error');
-                return;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            const successful = document.execCommand('copy');
+            document.body.removeChild(textarea);
+            if (successful) {
+                this.showStatus('Comment copied to clipboard!', 'success');
+            } else {
+                throw new Error('Fallback copy command failed');
             }
-
-            await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                function: this.insertCommentToPage,
-                args: [commentText]
-            });
-
-            this.showStatus('Comment inserted to LinkedIn!', 'success');
-            window.close(); // Close popup after successful insertion
         } catch (error) {
-            console.error('Error inserting comment:', error);
-            this.showStatus('Error inserting comment. Please try manually.', 'error');
+            this.showStatus('Error copying comment', 'error');
         }
     }
-
-    insertCommentToPage(commentText) {
-        // This function runs in the context of the LinkedIn page
-        const commentSelectors = [
-            '.ql-editor[data-placeholder*="comment"]',
-            '.ql-editor[aria-label*="comment" i]',
-            'div[data-artdeco-is-focused="true"].ql-editor',
-            '.comments-comment-box__form .ql-editor',
-            '.comment-form .ql-editor',
-            'div[role="textbox"][aria-label*="comment" i]'
-        ];
-
-        let commentBox = null;
-        
-        // Try to find an active comment box
-        for (const selector of commentSelectors) {
-            const elements = document.querySelectorAll(selector);
-            for (const element of elements) {
-                // Check if the element is visible and potentially active
-                if (element.offsetParent !== null && 
-                    (element.textContent.trim() === '' || element.getAttribute('data-artdeco-is-focused') === 'true')) {
-                    commentBox = element;
-                    break;
-                }
-            }
-            if (commentBox) break;
-        }
-
-        if (commentBox) {
-            // Clear existing content and insert new comment
-            commentBox.focus();
-            commentBox.innerHTML = `<p>${commentText}</p>`;
-            
-            // Trigger input events to ensure LinkedIn recognizes the change
-            const inputEvent = new Event('input', { bubbles: true });
-            commentBox.dispatchEvent(inputEvent);
-            
-            return true;
-        }
-
-        // If no comment box found, try to open one by clicking comment button
-        const commentButtons = document.querySelectorAll('button[aria-label*="comment" i], .comment-button, .social-actions-button--comment');
-        if (commentButtons.length > 0) {
-            commentButtons[0].click();
-            
-            // Wait a bit and try again
-            setTimeout(() => {
-                const newCommentBox = document.querySelector('.ql-editor[data-placeholder*="comment"], .ql-editor[aria-label*="comment" i]');
-                if (newCommentBox) {
-                    newCommentBox.focus();
-                    newCommentBox.innerHTML = `<p>${commentText}</p>`;
-                    const inputEvent = new Event('input', { bubbles: true });
-                    newCommentBox.dispatchEvent(inputEvent);
-                }
-            }, 1000);
-        }
-
-        return false;
-    }
-    */
 
     setGeneratingState(isGenerating) {
         const generateBtn = document.getElementById('generate-btn');
@@ -230,7 +220,6 @@ class LinkedInAIExtension {
         statusEl.className = type === 'error' ? 'status-message error' : 'status-message';
         statusEl.style.display = 'block';
 
-        // Auto-hide success/info messages after 3 seconds
         if (type !== 'error') {
             setTimeout(() => {
                 statusEl.style.display = 'none';
@@ -239,7 +228,7 @@ class LinkedInAIExtension {
     }
 }
 
-// Initialize the extension when DOM is loaded
+// Initialize extension when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     new LinkedInAIExtension();
 });
